@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "snaptoy-app",
-    "slug": "snaptoy-app",
+    "name": "client",
+    "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,6 +24,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-router",
+      "expo-font"
+    ]
   }
 }
