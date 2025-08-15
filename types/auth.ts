@@ -1,3 +1,5 @@
+import { UserResponse } from "./api";
+
 export interface User {
   id: string;
   email?: string;
@@ -9,7 +11,7 @@ export interface User {
 }
 
 export interface AuthState {
-  user: User | null;
+  user: UserResponse | null;
   sessionToken: string | null;
   isLoading: boolean;
   error: string | null;

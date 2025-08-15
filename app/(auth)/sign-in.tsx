@@ -1,39 +1,42 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, SafeAreaView, Alert } from "react-native";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { router } from "expo-router";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { COLORS, SPACING, TYPOGRAPHY } from "../../constants/theme";
+import AppButton from "../../components/shared/AppButton";
 
 export default function SignInScreen() {
-  const { signIn } = useAuth();
+  const { signIn, isAvailable, authState } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    // Auto-redirect if already signed in
+    if (authState.user && !authState.isLoading) {
+      router.replace("/(app)");
+    }
+  }, [authState.user, authState.isLoading]);
+
   const handleAppleSignIn = async () => {
+    if (!isAvailable) {
+      Alert.alert(
+        "Apple Sign-In Unavailable",
+        "Apple Sign-In is not available on this device. Please try again or contact support."
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
-
-      // Mock Apple Sign-In for now
-      const mockCredential = {
-        identityToken: "mock-identity-token",
-        user: "mock-user-id",
-        email: "user@apple.com",
-        fullName: {
-          givenName: "John",
-          familyName: "Doe",
-        },
-      };
-
-      await signIn(mockCredential);
+      await signIn();
       router.replace("/(app)");
     } catch (error: any) {
-      Alert.alert("Sign-In Failed", error.message);
+      console.error("Apple Sign-In error:", error);
+      if (error.code === "ERR_CANCELED") {
+        // User cancelled, don't show error
+        return;
+      }
+      Alert.alert("Sign-In Failed", error.message || "Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -65,15 +68,33 @@ export default function SignInScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.signInButton}
-          onPress={handleAppleSignIn}
-          disabled={isLoading}
-        >
-          <Text style={styles.signInButtonText}>
-            {isLoading ? "Signing you in..." : "🍎 Sign in with Apple"}
-          </Text>
-        </TouchableOpacity>
+        {isAvailable ? (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={
+              AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
+            }
+            buttonStyle={
+              AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+            }
+            cornerRadius={12}
+            style={styles.appleSignInButton}
+            onPress={handleAppleSignIn}
+          />
+        ) : (
+          <AppButton
+            title="🍎 Sign in with Apple"
+            onPress={handleAppleSignIn}
+            loading={isLoading}
+            disabled={!isAvailable}
+            style={styles.fallbackButton}
+          />
+        )}
+
+        {authState.error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{authState.error}</Text>
+          </View>
+        )}
 
         <Text style={styles.privacyText}>
           By signing in, you agree to our privacy policy. Your data is secure
@@ -135,17 +156,26 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingVertical: SPACING.sm,
   },
-  signInButton: {
-    backgroundColor: COLORS.primary,
-    padding: SPACING.lg,
-    borderRadius: 12,
-    alignItems: "center",
+  appleSignInButton: {
+    width: "100%",
+    height: 50,
     marginBottom: SPACING.md,
   },
-  signInButtonText: {
-    fontSize: TYPOGRAPHY.fontSize.lg,
-    fontWeight: TYPOGRAPHY.fontWeight.semibold,
-    color: COLORS.background,
+  fallbackButton: {
+    marginBottom: SPACING.md,
+  },
+  errorContainer: {
+    backgroundColor: COLORS.error + "10",
+    padding: SPACING.md,
+    borderRadius: 8,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.error + "30",
+  },
+  errorText: {
+    color: COLORS.error,
+    fontSize: TYPOGRAPHY.fontSize.sm,
+    textAlign: "center",
   },
   privacyText: {
     fontSize: TYPOGRAPHY.fontSize.xs,
